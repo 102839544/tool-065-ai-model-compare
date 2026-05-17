@@ -1,108 +1,111 @@
 #!/usr/bin/env python3
 """
 ai-model-compare - AI模型对比工具
-分类：🤖 AI工具
-作者：102839544
-版本：1.0.0
+工具编号: tool-065
 """
 
-import sys
-import os
-from pathlib import Path
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, scrolledtext
 
 class App:
     def __init__(self, root):
         self.root = root
-        root.title("ai-model-compare v1.0")
-        root.geometry("700x500")
-        root.resizable(True, True)
-        
+        root.title("AI模型对比工具 v1.0")
+        root.geometry("900x700")
         self.setup_ui()
     
     def setup_ui(self):
-        # 标题栏
-        title_frame = tk.Frame(self.root, bg="#1a73e8", height=60)
+        # 标题
+        title_frame = tk.Frame(self.root, bg="#673AB7", height=60)
         title_frame.pack(fill="x")
         title_frame.pack_propagate(False)
+        tk.Label(title_frame, text="🤖 AI模型对比工具", font=("Arial", 18, "bold"),
+                 fg="white", bg="#673AB7").pack(pady=15)
         
-        tk.Label(
-            title_frame, 
-            text="🔧 ai-model-compare", 
-            font=("Arial", 16, "bold"),
-            fg="white", 
-            bg="#1a73e8"
-        ).pack(pady=15)
-        
-        # 主容器
+        # 主区域
         main = tk.Frame(self.root, padx=20, pady=15)
         main.pack(fill="both", expand=True)
         
-        # 功能区
-        tk.Label(
-            main, 
-            text="AI模型对比工具", 
-            font=("Arial", 12),
-            fg="gray"
-        ).pack(pady=20)
+        # API设置
+        api_frame = tk.LabelFrame(main, text="🔑 API 设置", font=("Arial", 10, "bold"))
+        api_frame.pack(fill="x", pady=10)
         
-        # 操作按钮示例
+        tk.Label(api_frame, text="API Key:").grid(row=0, column=0, padx=10, pady=5, sticky="w")
+        self.api_key_var = tk.StringVar()
+        tk.Entry(api_key_var, show="*", width=40).grid(row=0, column=1, padx=5, pady=5)
+        
+        tk.Label(api_frame, text="模型:").grid(row=0, column=2, padx=10, pady=5, sticky="w")
+        self.model_var = tk.StringVar(value="gpt-3.5-turbo")
+        model_combo = ttk.Combobox(api_frame, textvariable=self.model_var,
+                                    values=["gpt-3.5-turbo", "gpt-4", "claude-3"], width=20)
+        model_combo.grid(row=0, column=3, padx=5, pady=5)
+        
+        # 输入区
+        input_frame = tk.LabelFrame(main, text="📝 输入", font=("Arial", 10, "bold"))
+        input_frame.pack(fill="both", expand=True, pady=10)
+        
+        self.input_text = scrolledtext.ScrolledText(input_frame, wrap=tk.WORD,
+                                                     font=("Arial", 11), height=8)
+        self.input_text.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        # 按钮
         btn_frame = tk.Frame(main)
-        btn_frame.pack(pady=30)
+        btn_frame.pack(fill="x", pady=10)
         
-        tk.Button(
-            btn_frame, 
-            text="📂 选择文件", 
-            command=self.select_file,
-            bg="#1a73e8", fg="white",
-            font=("Arial", 11),
-            padx=20, pady=10,
-            cursor="hand2"
-        ).pack(side="left", padx=10)
+        tk.Button(btn_frame, text="🚀 发送请求", command=self.send_request,
+                  bg="#673AB7", fg="white", font=("Arial", 11, "bold"),
+                  padx=25, pady=10).pack(side="left", padx=10)
+        tk.Button(btn_frame, text="🗑️ 清空", command=self.clear_all,
+                  bg="#f44336", fg="white", padx=15, pady=10).pack(side="left")
         
-        tk.Button(
-            btn_frame, 
-            text="⚙️ 开始处理", 
-            command=self.process,
-            bg="#34a853", fg="white",
-            font=("Arial", 11, "bold"),
-            padx=20, pady=10,
-            cursor="hand2"
-        ).pack(side="left", padx=10)
+        # 输出区
+        output_frame = tk.LabelFrame(main, text="📄 结果", font=("Arial", 10, "bold"))
+        output_frame.pack(fill="both", expand=True, pady=10)
         
-        # 结果区域
-        tk.Label(main, text="处理结果：", font=("Arial", 10, "bold")).pack(anchor="w", pady=(20, 5))
+        self.output_text = scrolledtext.ScrolledText(output_frame, wrap=tk.WORD,
+                                                      font=("Arial", 11), height=10)
+        self.output_text.pack(fill="both", expand=True, padx=5, pady=5)
         
-        self.result_text = tk.Text(main, height=10, font=("Consolas", 10))
-        self.result_text.pack(fill="both", expand=True)
-        
-        # 状态栏
-        self.status = tk.Label(
-            main, 
-            text="就绪 - 请选择文件开始处理", 
-            font=("Arial", 10),
-            fg="gray",
-            anchor="w"
-        )
-        self.status.pack(fill="x", pady=(10, 0))
+        # 状态
+        self.status_var = tk.StringVar(value="就绪 - 请输入内容并发送请求")
+        tk.Label(main, textvariable=self.status_var, fg="gray").pack(fill="x")
     
-    def select_file(self):
-        file = filedialog.askopenfilename(title="选择文件")
-        if file:
-            self.result_text.delete(1.0, "end")
-            self.result_text.insert(1.0, f"已选择: {Path(file).name}")
-            self.status.config(text=f"已选择文件: {Path(file).name}")
+    def send_request(self):
+        input_text = self.input_text.get(1.0, tk.END).strip()
+        if not input_text:
+            messagebox.showwarning("提示", "请输入内容！")
+            return
+        
+        self.status_var.set("处理中...")
+        self.output_text.delete(1.0, tk.END)
+        
+        # 模拟AI响应
+        response = f"""已收到您的请求！
+
+输入内容:
+{input_text}
+
+模型: {self.model_var.get()}
+
+⚠️ 注意: 这是一个演示版本。
+要使用真实的AI功能，请:
+1. 在设置中输入您的API Key
+2. 确保已安装相应依赖 (pip install openai anthropic)
+3. 检查网络连接
+
+功能开发中..."""
+        
+        self.output_text.insert(1.0, response)
+        self.status_var.set("✅ 完成")
     
-    def process(self):
-        # TODO: 实现具体功能
-        self.result_text.delete(1.0, "end")
-        self.result_text.insert(1.0, "✅ 功能开发中...\n\n欢迎贡献代码！")
-        self.status.config(text="处理完成")
+    def clear_all(self):
+        self.input_text.delete(1.0, tk.END)
+        self.output_text.delete(1.0, tk.END)
+        self.status_var.set("已清空")
 
 def main():
     root = tk.Tk()
-    app = App(root)
+    App(root)
     root.mainloop()
 
 if __name__ == "__main__":
