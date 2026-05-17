@@ -1,0 +1,7 @@
+# Python 依赖列表
+# 安装命令: pip install -r requirements.txt
+
+# AI工具依赖
+openai>=1.0.0
+anthropic>=0.18.0
+requests>=2.31.0
